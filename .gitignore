@@ -1,0 +1,11 @@
+node_modules/
+*.js.map
+.claude/
+.hotreload
+.DS_Store
+
+# Build artifact: produced by `npm run build`, attached to GitHub
+# Releases so BRAT can pull main.js + manifest.json + styles.css
+# directly. Keep gitignored — the release tag is the only source of
+# truth for shipped builds.
+main.js

@@ -1,0 +1,10 @@
+{
+  "id": "forge-installer",
+  "name": "Forge Installer",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "One-paste install for the Forge Client plugin (BRAT-friendly bootstrap).",
+  "author": "Oded Fuhrmann",
+  "authorUrl": "https://github.com/frmoded",
+  "isDesktopOnly": true
+}

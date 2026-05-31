@@ -1,0 +1,4 @@
+/* forge-installer has no UI styling — empty placeholder required
+   by Obsidian's plugin loader for community plugins that ship a
+   styles.css listed in manifest. The installer surfaces all of its
+   feedback via Notice popups + a small settings tab. */
