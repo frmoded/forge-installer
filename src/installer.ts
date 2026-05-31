@@ -15,8 +15,10 @@ import { unzipSync } from 'fflate';
 
 import { fetchRelease, versionGreater } from './github-release';
 import { stripZipTopDir } from './zip-paths';
+import { selectEnableStrategy } from './enable-strategy';
 
 export { stripZipTopDir };
+export { selectEnableStrategy };
 
 const PLUGIN_ID = 'forge-client-obsidian';
 const PLUGIN_DIR_REL = `.obsidian/plugins/${PLUGIN_ID}`;
@@ -43,6 +45,23 @@ export async function checkAndInstall(
     // the same bytes back. versionGreater treats equal versions as
     // not-greater, so "release == installed" lands here cleanly.
     if (installed && !versionGreater(release.tag_name, installed)) {
+      // v0.1.1: even if the version is current, the plugin may not be
+      // loaded. v0.1.0 had a bug where activatePlugin called
+      // enablePlugin without persisting to community-plugins.json — on
+      // reload, the install evaporated. Recover here by running the
+      // activate path, which now uses enablePluginAndSave. Surfaces as
+      // an "updated" Notice with explicit detail so the user sees the
+      // recovery happened.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const plugins = (app as any).plugins;
+      const isLoaded = !!plugins?.plugins?.[PLUGIN_ID];
+      if (!isLoaded) {
+        await activatePlugin(app);
+        return {
+          status: 'updated',
+          detail: `v${installed} re-enabled (was unloaded)`,
+        };
+      }
       return {
         status: 'up-to-date',
         detail: `v${installed} is current`,
@@ -190,7 +209,24 @@ async function activatePlugin(app: App): Promise<void> {
     await plugins.loadManifests();
   }
 
-  await plugins.enablePlugin(PLUGIN_ID);
+  // v0.1.1: enablePluginAndSave persists the enabled state to
+  // .obsidian/community-plugins.json so the plugin re-enables on
+  // reload. v0.1.0 used enablePlugin alone, which enabled for the
+  // current session only — on reload the install evaporated.
+  // selectEnableStrategy is a pure-core decision so node --test can
+  // exercise the API-shape detection without an obsidian shim.
+  const strategy = selectEnableStrategy(plugins);
+  if (strategy === 'enablePluginAndSave') {
+    await plugins.enablePluginAndSave(PLUGIN_ID);
+  } else if (strategy === 'enablePluginWithSaveData') {
+    await plugins.enablePlugin(PLUGIN_ID);
+    await plugins.saveData();
+  } else {
+    throw new Error(
+      'Obsidian plugin manager exposes no enablePluginAndSave or '
+      + 'enablePlugin+saveData — Forge Installer cannot persist the enable',
+    );
+  }
 }
 
 function humanSize(bytes?: number): string {
